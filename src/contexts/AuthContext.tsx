@@ -1,51 +1,50 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
+import { User, Session } from '@supabase/supabase-js';
+import { useNavigate } from 'react-router-dom';
 
 // Types
-type User = {
-  id: string;
-  email: string;
-  name?: string;
-  credits: number;
-};
-
 type AuthContextType = {
   user: User | null;
+  session: Session | null;
   isLoading: boolean;
   error: string | null;
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, name?: string) => Promise<void>;
-  logout: () => void;
-  updateCredits: (newCredits: number) => void;
+  logout: () => Promise<void>;
+  updateCredits: (newCredits: number) => Promise<void>;
 };
-
-// Mock users database for demo
-const MOCK_USERS = [
-  {
-    id: '1',
-    email: 'user@example.com',
-    password: 'password123',
-    name: 'Demo User',
-    credits: 5,
-  },
-];
 
 // Create context
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const navigate = useNavigate();
 
-  // Check for stored user on mount
+  // Initialize auth state from Supabase
   useEffect(() => {
-    const storedUser = localStorage.getItem('imagemate_user');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
-    setIsLoading(false);
+    // Set up auth state listener FIRST
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        setSession(session);
+        setUser(session?.user ?? null);
+      }
+    );
+
+    // THEN check for existing session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      setIsLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   const login = async (email: string, password: string) => {
@@ -53,22 +52,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setError(null);
     
     try {
-      // Simulate API request delay
-      await new Promise(resolve => setTimeout(resolve, 800));
-      
-      const foundUser = MOCK_USERS.find(u => u.email === email);
-      if (!foundUser || foundUser.password !== password) {
-        throw new Error('Invalid email or password');
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) {
+        throw error;
       }
-      
-      // Omit password when setting the user
-      const { password: _, ...userWithoutPassword } = foundUser;
-      setUser(userWithoutPassword);
-      localStorage.setItem('imagemate_user', JSON.stringify(userWithoutPassword));
+
       toast.success('Login successful');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
-      toast.error(err instanceof Error ? err.message : 'Login failed');
+      navigate('/dashboard');
+    } catch (err: any) {
+      setError(err.message);
+      toast.error(err.message || 'Login failed');
       throw err;
     } finally {
       setIsLoading(false);
@@ -80,55 +77,73 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setError(null);
     
     try {
-      // Simulate API request delay
-      await new Promise(resolve => setTimeout(resolve, 800));
-      
-      // Check if user already exists
-      if (MOCK_USERS.some(u => u.email === email)) {
-        throw new Error('User already exists with this email');
-      }
-      
-      // In a real app, we would create the user in a database
-      // For this demo, we'll pretend we created a user and return mock data
-      const newUser = {
-        id: String(MOCK_USERS.length + 1),
+      const { data, error } = await supabase.auth.signUp({
         email,
-        name: name || email.split('@')[0],
-        credits: 3, // New users get 3 free credits
-      };
-      
-      // In a real app we would save the user to the database here
-      // For demo, we'll just update our local state
-      MOCK_USERS.push({ ...newUser, password });
-      
-      setUser(newUser);
-      localStorage.setItem('imagemate_user', JSON.stringify(newUser));
+        password,
+        options: {
+          data: {
+            name: name || email.split('@')[0],
+          },
+        },
+      });
+
+      if (error) {
+        throw error;
+      }
+
       toast.success('Registration successful');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
-      toast.error(err instanceof Error ? err.message : 'Registration failed');
+      navigate('/dashboard');
+    } catch (err: any) {
+      setError(err.message);
+      toast.error(err.message || 'Registration failed');
       throw err;
     } finally {
       setIsLoading(false);
     }
   };
 
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem('imagemate_user');
-    toast.info('You have been logged out');
+  const logout = async () => {
+    try {
+      await supabase.auth.signOut();
+      toast.info('You have been logged out');
+      navigate('/');
+    } catch (err: any) {
+      toast.error(err.message || 'Logout failed');
+    }
   };
 
-  const updateCredits = (newCredits: number) => {
-    if (user) {
-      const updatedUser = { ...user, credits: newCredits };
-      setUser(updatedUser);
-      localStorage.setItem('imagemate_user', JSON.stringify(updatedUser));
+  const updateCredits = async (newCredits: number) => {
+    if (!user) return;
+    
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ credits: newCredits })
+        .eq('id', user.id);
+      
+      if (error) throw error;
+      
+      // We don't need to update the user state here as it will be refreshed via fetching profile data
+      // when components that use it are rendered
+    } catch (err: any) {
+      toast.error('Failed to update credits');
+      console.error('Update credits error:', err);
     }
   };
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, error, login, register, logout, updateCredits }}>
+    <AuthContext.Provider 
+      value={{ 
+        user, 
+        session,
+        isLoading, 
+        error, 
+        login, 
+        register, 
+        logout, 
+        updateCredits 
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

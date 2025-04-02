@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/contexts/AuthContext';
 import { Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface LoginFormProps {
   onSuccess?: () => void;
@@ -24,6 +25,15 @@ const LoginForm = ({ onSuccess, onSwitchToRegister }: LoginFormProps) => {
     } catch (error) {
       // Error is handled by the auth context
     }
+  };
+
+  const handleForgotPassword = () => {
+    if (!email) {
+      toast.error("Please enter your email address first");
+      return;
+    }
+    toast.info("Password reset functionality will be implemented soon");
+    // In a real implementation, we would call the password reset function here
   };
 
   return (
@@ -50,7 +60,12 @@ const LoginForm = ({ onSuccess, onSwitchToRegister }: LoginFormProps) => {
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <Label htmlFor="password">Password</Label>
-            <Button variant="link" className="px-0 h-auto font-normal" type="button">
+            <Button 
+              variant="link" 
+              className="px-0 h-auto font-normal" 
+              type="button"
+              onClick={handleForgotPassword}
+            >
               Forgot password?
             </Button>
           </div>
@@ -99,6 +114,7 @@ const LoginForm = ({ onSuccess, onSwitchToRegister }: LoginFormProps) => {
       <div className="text-center space-y-1 text-sm text-muted-foreground">
         <p>Email: user@example.com</p>
         <p>Password: password123</p>
+        <p className="text-xs mt-2 italic">Note: You can create your own account too!</p>
       </div>
     </div>
   );
