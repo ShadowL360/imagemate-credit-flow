@@ -27,9 +27,9 @@ export const processImage = async (file: File): Promise<ProcessedImage> => {
   const processingPromise = new Promise<ProcessedImage>((resolve) => {
     setTimeout(() => {
       // Update the image status to completed
-      const updatedImage = {
+      const updatedImage: ProcessedImage = {
         ...newImage,
-        status: 'completed',
+        status: 'completed' as const,
         processedUrl: newImage.originalUrl, // In a real app, this would be the processed image URL
         thumbnailUrl: newImage.originalUrl, // In a real app, this would be a thumbnail
         processingCompletedAt: new Date().toISOString(),
@@ -64,7 +64,7 @@ export const updateImageStatus = (imageId: string, status: 'processing' | 'compl
   
   if (imageIndex === -1) return undefined;
   
-  const updatedImage = {
+  const updatedImage: ProcessedImage = {
     ...mockImages[imageIndex],
     status,
     updatedAt: new Date().toISOString(),
