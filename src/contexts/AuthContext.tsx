@@ -5,9 +5,24 @@ import { supabase } from '@/integrations/supabase/client';
 import { User, Session } from '@supabase/supabase-js';
 import { useNavigate } from 'react-router-dom';
 
+// Define a ProfileData type to match our Supabase profile structure
+type ProfileData = {
+  id: string;
+  name: string | null;
+  credits: number;
+  created_at: string;
+  updated_at: string;
+};
+
+// Extend the User type to include our additional properties
+type ExtendedUser = User & {
+  name?: string;
+  credits?: number;
+};
+
 // Types
 type AuthContextType = {
-  user: User | null;
+  user: ExtendedUser | null;
   session: Session | null;
   isLoading: boolean;
   error: string | null;
@@ -21,26 +36,75 @@ type AuthContextType = {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<ExtendedUser | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
 
+  // Fetch user profile data from Supabase
+  const fetchUserProfile = async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+      
+      if (error) {
+        console.error('Error fetching user profile:', error);
+        return null;
+      }
+      
+      return data as ProfileData;
+    } catch (err) {
+      console.error('Exception fetching user profile:', err);
+      return null;
+    }
+  };
+
+  // Update user state with profile data
+  const updateUserWithProfile = async (currentUser: User) => {
+    const profile = await fetchUserProfile(currentUser.id);
+    if (profile) {
+      setUser({
+        ...currentUser,
+        name: profile.name || currentUser.email?.split('@')[0] || '',
+        credits: profile.credits
+      });
+    } else {
+      setUser(currentUser);
+    }
+  };
+
   // Initialize auth state from Supabase
   useEffect(() => {
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
+      async (event, currentSession) => {
+        setSession(currentSession);
+        
+        if (currentSession?.user) {
+          // Use setTimeout to prevent potential recursive issues with Supabase client
+          setTimeout(async () => {
+            await updateUserWithProfile(currentSession.user);
+          }, 0);
+        } else {
+          setUser(null);
+        }
       }
     );
 
     // THEN check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
+    supabase.auth.getSession().then(async ({ data: { session: currentSession } }) => {
+      setSession(currentSession);
+      
+      if (currentSession?.user) {
+        await updateUserWithProfile(currentSession.user);
+      } else {
+        setUser(null);
+      }
+      
       setIsLoading(false);
     });
 
@@ -123,8 +187,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       if (error) throw error;
       
-      // We don't need to update the user state here as it will be refreshed via fetching profile data
-      // when components that use it are rendered
+      // Update the local user state with new credits
+      setUser(prevUser => prevUser ? { ...prevUser, credits: newCredits } : null);
     } catch (err: any) {
       toast.error('Failed to update credits');
       console.error('Update credits error:', err);

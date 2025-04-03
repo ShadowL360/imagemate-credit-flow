@@ -1,9 +1,8 @@
 
 import { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
-import { Upload, Image as ImageIcon, X, AlertCircle } from 'lucide-react';
+import { Upload, X, AlertCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import AuthModal from '../auth/AuthModal';
@@ -87,7 +86,7 @@ const ImageUploader = ({ onUploadSuccess }: ImageUploaderProps) => {
   };
   
   const handleUpload = async () => {
-    if (!file) return;
+    if (!file || !user || user.credits === undefined) return;
     
     if (!user) {
       toast.error('Please log in to upload images');
@@ -106,7 +105,7 @@ const ImageUploader = ({ onUploadSuccess }: ImageUploaderProps) => {
       const result = await processImage(file);
       
       // Update credits
-      updateCredits(user.credits - 1);
+      updateCredits((user.credits || 0) - 1);
       
       // Pass the uploaded data to parent component
       onUploadSuccess(result);
@@ -185,7 +184,7 @@ const ImageUploader = ({ onUploadSuccess }: ImageUploaderProps) => {
                 Each upload costs 1 credit
               </p>
             </div>
-            {user && (
+            {user && user.credits !== undefined && (
               <div className="text-sm text-muted-foreground">
                 {user.credits} credits available
               </div>
@@ -205,7 +204,7 @@ const ImageUploader = ({ onUploadSuccess }: ImageUploaderProps) => {
             <Button 
               className="w-full"
               onClick={handleUpload}
-              disabled={!file || isUploading || user.credits < 1}
+              disabled={!file || isUploading || (user.credits !== undefined && user.credits < 1)}
             >
               {isUploading ? 'Processing...' : 'Upload & Process Image'}
             </Button>

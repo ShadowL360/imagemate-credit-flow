@@ -35,7 +35,7 @@ const AppHeader = () => {
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" size="sm" className="ml-2">
-                    <span className="mr-2">{user.name || user.email.split('@')[0]}</span>
+                    <span className="mr-2">{user.name || user.email?.split('@')[0]}</span>
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">

@@ -11,54 +11,24 @@ import {
   DialogTrigger
 } from '@/components/ui/dialog';
 import { PlusCircle, Coins } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { toast } from 'sonner';
-import { supabase } from '@/integrations/supabase/client';
 
 const CreditDisplay = () => {
   const { user, updateCredits } = useAuth();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [credits, setCredits] = useState<number>(0);
-
-  useEffect(() => {
-    // When the component mounts or user changes, fetch the latest profile info
-    if (user) {
-      fetchUserCredits();
-    }
-  }, [user]);
-
-  const fetchUserCredits = async () => {
-    if (!user) return;
-    
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('credits')
-        .eq('id', user.id)
-        .single();
-      
-      if (error) throw error;
-      
-      if (data) {
-        setCredits(data.credits);
-      }
-    } catch (err) {
-      console.error('Error fetching user credits:', err);
-    }
-  };
-
+  
   const handleAddCredits = async (amount: number) => {
-    if (!user) return;
+    if (!user || user.credits === undefined) return;
     
     setIsProcessing(true);
     // Simulate payment processing
     await new Promise(resolve => setTimeout(resolve, 1500));
     
     try {
-      const newCredits = credits + amount;
+      const newCredits = (user.credits || 0) + amount;
       await updateCredits(newCredits);
-      setCredits(newCredits);
       setIsProcessing(false);
       setIsDialogOpen(false);
       toast.success(`Added ${amount} credits to your account`);
@@ -68,13 +38,13 @@ const CreditDisplay = () => {
     }
   };
 
-  if (!user) return null;
+  if (!user || user.credits === undefined) return null;
 
   return (
     <div className="flex items-center">
       <div className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 rounded-full mr-2">
         <Coins className="h-4 w-4 text-primary" />
-        <span className="font-medium text-sm">{credits} credits</span>
+        <span className="font-medium text-sm">{user.credits} credits</span>
       </div>
       
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>

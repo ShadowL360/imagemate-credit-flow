@@ -76,7 +76,7 @@ const Dashboard = () => {
       
       <main className="flex-1 container py-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-2">Welcome, {user.name || user.email.split('@')[0]}</h1>
+          <h1 className="text-3xl font-bold mb-2">Welcome, {user.name || user.email?.split('@')[0]}</h1>
           <p className="text-muted-foreground">
             Upload images for processing using your credits
           </p>
