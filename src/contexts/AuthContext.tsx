@@ -3,7 +3,6 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { User, Session } from '@supabase/supabase-js';
-import { useNavigate } from 'react-router-dom';
 
 // Define a ProfileData type to match our Supabase profile structure
 type ProfileData = {
@@ -40,7 +39,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const navigate = useNavigate();
+  
+  // Navigation function to avoid depending on react-router-dom
+  const navigate = (path: string) => {
+    window.location.href = path;
+  };
 
   // Fetch user profile data from Supabase
   const fetchUserProfile = async (userId: string) => {
@@ -79,9 +82,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Initialize auth state from Supabase
   useEffect(() => {
+    console.log("AuthProvider: Initializing auth state");
+    
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, currentSession) => {
+      (event, currentSession) => {
+        console.log("AuthProvider: Auth state changed", event);
         setSession(currentSession);
         
         if (currentSession?.user) {
@@ -97,6 +103,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // THEN check for existing session
     supabase.auth.getSession().then(async ({ data: { session: currentSession } }) => {
+      console.log("AuthProvider: Getting session", currentSession ? "found" : "not found");
       setSession(currentSession);
       
       if (currentSession?.user) {
