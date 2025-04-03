@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -67,6 +66,23 @@ const Dashboard = () => {
     setSelectedImage(image);
     setIsDetailOpen(true);
   };
+  
+  // Add a function to handle password reset
+  function handlePasswordReset() {
+    // Get the "reset" query parameter from the URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const resetParam = urlParams.get('reset');
+    
+    // If the "reset" parameter is present, show a toast notifying the user they can reset their password
+    if (resetParam === 'true') {
+      toast.info("You can now reset your password in your account settings");
+    }
+  }
+  
+  // Call the handlePasswordReset function when the component mounts
+  useEffect(() => {
+    handlePasswordReset();
+  }, []);
   
   if (!user) return null;
   

@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { useAuth } from '@/contexts/AuthContext';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import ResetPasswordForm from './ResetPasswordForm';
 
 interface LoginFormProps {
   onSuccess?: () => void;
@@ -15,6 +16,7 @@ interface LoginFormProps {
 const LoginForm = ({ onSuccess, onSwitchToRegister }: LoginFormProps) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showResetForm, setShowResetForm] = useState(false);
   const { login, isLoading } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -27,14 +29,9 @@ const LoginForm = ({ onSuccess, onSwitchToRegister }: LoginFormProps) => {
     }
   };
 
-  const handleForgotPassword = () => {
-    if (!email) {
-      toast.error("Please enter your email address first");
-      return;
-    }
-    toast.info("Password reset functionality will be implemented soon");
-    // In a real implementation, we would call the password reset function here
-  };
+  if (showResetForm) {
+    return <ResetPasswordForm onBack={() => setShowResetForm(false)} />;
+  }
 
   return (
     <div className="space-y-4 w-full max-w-md">
@@ -64,7 +61,7 @@ const LoginForm = ({ onSuccess, onSwitchToRegister }: LoginFormProps) => {
               variant="link" 
               className="px-0 h-auto font-normal" 
               type="button"
-              onClick={handleForgotPassword}
+              onClick={() => setShowResetForm(true)}
             >
               Forgot password?
             </Button>
