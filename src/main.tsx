@@ -12,7 +12,9 @@ try {
   
   createRoot(root).render(
     <React.StrictMode>
-      <App />
+      <AuthProvider>
+        <App />
+      </AuthProvider>
     </React.StrictMode>
   );
 } catch (error) {
